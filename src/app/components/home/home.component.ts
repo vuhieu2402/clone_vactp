@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { User } from '../../models/auth.model';
+import { BranchService } from '../../services/branch.service';
 
 @Component({
   selector: 'app-home',
@@ -11,6 +12,7 @@ import { User } from '../../models/auth.model';
 export class HomeComponent implements OnInit {
   currentUser: User | null = null;
   isSidebarOpen = true; // State cho sidebar
+  branches: any[] = []; // Always initialize as array
   
   // Dropdown states
   dropdownStates = {
@@ -22,7 +24,8 @@ export class HomeComponent implements OnInit {
 
   constructor(
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private branchService: BranchService
   ) { }
 
   ngOnInit(): void {
@@ -32,7 +35,23 @@ export class HomeComponent implements OnInit {
     if (!this.currentUser) {
       // Nếu không có thông tin đăng nhập, chuyển về login
       this.router.navigate(['/login']);
+    } else {
+      this.loadBranches(); // Load branches if user is logged in
     }
+  }
+
+  loadBranches(): void {
+    this.branchService.getBranches().subscribe(
+      (data) => {
+        // Đảm bảo data là array
+        this.branches = Array.isArray(data) ? data : [];
+        console.log('Branches loaded:', this.branches);
+      },
+      (error) => {
+        console.error('Error loading branches:', error);
+        this.branches = []; // Đảm bảo luôn là array
+      }
+    );
   }
 
   toggleSidebar(): void {

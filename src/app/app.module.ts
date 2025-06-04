@@ -29,6 +29,7 @@ import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 
 import { LoginComponent } from './components/login/login.component';
 import { HomeComponent } from './components/home/home.component';
@@ -68,7 +69,8 @@ registerLocaleData(en);
     NzDatePickerModule,
     NzDropDownModule,
     NzMenuModule,
-    NzTableModule
+    NzTableModule,
+    NzSpinModule
   ],
   providers: [
     { provide: NZ_I18N, useValue: en_US }
