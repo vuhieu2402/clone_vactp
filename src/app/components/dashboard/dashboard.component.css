@@ -1,0 +1,50 @@
+/* Dashboard specific styles */
+:host ::ng-deep .ant-select {
+  width: 100%;
+}
+
+:host ::ng-deep .ant-select-selector {
+  height: 40px !important;
+  padding: 4px 11px !important;
+  border: 1px solid #d9d9d9 !important;
+  border-radius: 4px !important;
+}
+
+:host ::ng-deep .ant-select-selection-placeholder,
+:host ::ng-deep .ant-select-selection-item {
+  line-height: 32px !important;
+}
+
+:host ::ng-deep .ant-picker {
+  width: 100%;
+  height: 40px;
+  padding: 4px 11px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+}
+
+:host ::ng-deep .ant-picker-input > input {
+  font-size: 14px;
+}
+
+:host ::ng-deep .ant-btn {
+  height: 40px;
+  padding: 6.4px 15px;
+  border-radius: 4px;
+}
+
+:host ::ng-deep .ant-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  background-color: #f59e0b;
+  border: none;
+}
+
+:host ::ng-deep .ant-dropdown-trigger:hover {
+  background-color: #d97706;
+}
+
+/* Remove box shadow from white background containers */
+.bg-white {
+  box-shadow: none !important;
+} 

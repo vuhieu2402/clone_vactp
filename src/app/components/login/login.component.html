@@ -1,0 +1,98 @@
+<div class="min-h-screen relative flex items-center justify-center bg-center bg-no-repeat futuristic-bg" 
+     style="background-image: url('assets/images/bg_tpb.png');">
+  
+  <!-- Overlay tối để làm nổi bật form -->
+  <div class="absolute inset-0 bg-overlay"></div>
+  
+  <!-- Login Form Container -->
+  <div class="relative z-10 w-full max-w-md mx-4">
+
+    <!-- Login Form -->
+    <div class="glass-card-new login-card shadow-2xl border-0 p-8 rounded-2xl">
+      
+      <!-- Title -->
+      <div class="text-center mb-8">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">
+          LOGIN TO <span class="text-orange-500">VAC</span>
+        </h1>
+        <!-- <p class="text-sm text-gray-600 mt-2">
+          Demo: admin / 123456
+        </p> -->
+      </div>
+
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-6">
+        
+        <!-- Username Input -->
+        <div class="space-y-2">
+          <label class="text-gray-700 font-medium text-sm">Username <span class="text-red-500">*</span></label>
+          <input 
+            formControlName="username"
+            placeholder="Nhập tên đăng nhập" 
+            type="text"
+            class="custom-input-new h-12 text-base bg-transparent border border-gray-300 rounded-lg px-4 w-full focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+          <div *ngIf="loginForm.get('username')?.invalid && loginForm.get('username')?.dirty" class="text-red-500 text-xs">
+            Vui lòng nhập tên đăng nhập!
+          </div>
+        </div>
+
+        <!-- Password Input -->
+        <div class="space-y-2">
+          <label class="text-gray-700 font-medium text-sm">Password <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <input 
+              formControlName="password"
+              placeholder="Nhập mật khẩu" 
+              [type]="showPassword ? 'text' : 'password'"
+              class="custom-input-new h-12 text-base bg-transparent border border-gray-300 rounded-lg px-4 pr-12 w-full focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+            
+            <!-- Prominent Eye Icon -->
+            <button 
+              type="button"
+              (click)="togglePasswordVisibility()"
+              class="absolute right-3 top-1/2 transform -translate-y-1/2 bg-transparent border-none outline-none text-orange-500 hover:text-orange-600 focus:outline-none transition-all duration-300 p-0 m-0">
+              
+              <!-- Eye Open -->
+              <svg *ngIf="!showPassword" 
+                   class="w-5 h-5" 
+                   fill="none" 
+                   stroke="currentColor" 
+                   viewBox="0 0 24 24"
+                   stroke-width="1.8"
+                   style="background: none;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              
+              <!-- Eye Closed -->
+              <svg *ngIf="showPassword" 
+                   class="w-5 h-5" 
+                   fill="none" 
+                   stroke="currentColor" 
+                   viewBox="0 0 24 24"
+                   stroke-width="1.8"
+                   style="background: none;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 11-4.243-4.243m4.242 4.242L9.88 9.88"></path>
+              </svg>
+            </button>
+          </div>
+          <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.dirty" class="text-red-500 text-xs">
+            Vui lòng nhập mật khẩu!
+          </div>
+        </div>
+
+        <!-- Login Button -->
+        <div class="pt-4">
+          <button 
+            type="submit"
+            [disabled]="isLoading"
+            class="yellow-button w-full h-12 text-base font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <span *ngIf="!isLoading">Login</span>
+            <span *ngIf="isLoading">Đang đăng nhập...</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+    
+  </div>
+</div>
