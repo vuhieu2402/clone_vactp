@@ -1,15 +1,7 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
 import { BranchService } from '../../services/branch.service';
 import { ViolationService } from '../../services/violation.service';
-import { interval, Subscription } from 'rxjs';
-
-interface TableData {
-  tenKho: string;
-  trangThai: string;
-  thoiGian: Date;
-  nguoiThucHien: string;
-  ghiChu: string;
-}
+import { Subscription } from 'rxjs';
 
 interface ChartData {
   date: string;
@@ -21,209 +13,213 @@ interface ChartData {
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
-export class DashboardComponent implements OnInit, OnDestroy {
-  // Properties for the dashboard
-  selectedBranch: string = '';
-  startDate: Date | null = null;
+export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
+  selectedBranch: string = 'all';
+  startDate: Date = new Date();
   endDate: Date = new Date();
   isTableView: boolean = false;
   branches: any[] = [];
   isLoadingBranches: boolean = false;
-  private dateUpdateSubscription?: Subscription;
   isLoadingChart: boolean = false;
+  isDownloading: boolean = false;
   
-  // Chart data
   chartData: ChartData[] = [];
-  
-  // Sample table data
-  tableData: TableData[] = [
-    {
-      tenKho: 'Kho Quỹ 001',
-      trangThai: 'Đóng',
-      thoiGian: new Date('2025-06-03 08:00:00'),
-      nguoiThucHien: 'Nguyễn Văn A',
-      ghiChu: 'Đóng kho theo lịch'
-    },
-    {
-      tenKho: 'Kho Quỹ 002',
-      trangThai: 'Đóng',
-      thoiGian: new Date('2025-06-03 08:30:00'),
-      nguoiThucHien: 'Trần Thị B',
-      ghiChu: 'Đóng kho cuối ca'
-    },
-    {
-      tenKho: 'Kho Quỹ 003',
-      trangThai: 'Mở',
-      thoiGian: new Date('2025-06-03 07:00:00'),
-      nguoiThucHien: 'Lê Văn C',
-      ghiChu: 'Mở kho đầu ca'
-    }
-  ];
 
   constructor(
     private branchService: BranchService,
     private violationService: ViolationService
-  ) { }
+  ) {
+    // Set default date range (today - 6 days to today)
+    this.startDate.setDate(this.endDate.getDate() - 6);
+    this.startDate.setHours(0, 0, 0, 0);
+    this.endDate.setHours(23, 59, 59, 999);
+  }
 
   ngOnInit(): void {
     this.loadBranches();
-    this.startRealtimeDateUpdate();
     this.loadViolationData();
   }
 
+  ngAfterViewInit(): void {
+    this.setupTooltipListeners();
+  }
+
   ngOnDestroy(): void {
-    // Hủy subscription khi component bị hủy
-    if (this.dateUpdateSubscription) {
-      this.dateUpdateSubscription.unsubscribe();
+    // Component cleanup if needed
+  }
+
+  private setupTooltipListeners(): void {
+    // Setup tooltip for chart points
+    setTimeout(() => {
+      const circles = document.querySelectorAll('circle[data-tooltip]');
+      const tooltip = document.getElementById('chart-tooltip');
+      
+      if (tooltip) {
+        circles.forEach(circle => {
+          circle.addEventListener('mouseenter', (e: any) => {
+            const tooltipText = e.target.getAttribute('data-tooltip');
+            if (tooltipText) {
+              tooltip.textContent = tooltipText;
+              tooltip.classList.remove('opacity-0');
+              tooltip.classList.add('opacity-100');
+            }
+          });
+          
+          circle.addEventListener('mousemove', (e: any) => {
+            const rect = e.target.closest('svg').getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = (y - 10) + 'px';
+          });
+          
+          circle.addEventListener('mouseleave', () => {
+            tooltip.classList.remove('opacity-100');
+            tooltip.classList.add('opacity-0');
+          });
+        });
+      }
+    }, 100);
+  }
+
+  // Handle branch selection changes
+  onBranchChange(): void {
+    console.log('Branch changed to:', this.selectedBranch);
+    this.loadViolationData();
+  }
+
+  // Handle date changes
+  onDateChange(): void {
+    if (this.startDate && this.endDate) {
+      const start = new Date(this.startDate);
+      start.setHours(0, 0, 0, 0);
+      
+      const end = new Date(this.endDate);
+      end.setHours(23, 59, 59, 999);
+      
+      this.loadViolationData();
     }
   }
 
-  // Bắt đầu cập nhật ngày theo thời gian thực
-  private startRealtimeDateUpdate(): void {
-    // Cập nhật mỗi giây
-    this.dateUpdateSubscription = interval(1000).subscribe(() => {
-      this.endDate = new Date();
-    });
+  // Get foundation ID for API request
+  private getFoundationId(): string {
+    let foundationId = '';
+    
+    if (this.selectedBranch === 'all' || !this.selectedBranch) {
+      foundationId = '';
+    } else {
+      foundationId = this.selectedBranch;
+    }
+    
+    console.log('Foundation ID being used:', foundationId);
+    console.log('Selected branch value:', this.selectedBranch);
+    
+    return foundationId;
   }
 
   loadBranches(): void {
     this.isLoadingBranches = true;
     this.branchService.getBranches().subscribe(
       (data) => {
-        // Đảm bảo data là array
         this.branches = Array.isArray(data) ? data : [];
-        console.log('Branches loaded in dashboard:', this.branches);
-        console.log('Number of branches:', this.branches.length);
-        
-        // Log chi tiết từng branch để debug
-        this.branches.forEach((branch, index) => {
-          console.log(`Branch ${index}:`, branch);
-          console.log(`Branch ${index} keys:`, Object.keys(branch || {}));
-        });
-        
         this.isLoadingBranches = false;
       },
       (error) => {
-        console.error('Error loading branches in dashboard:', error);
-        this.branches = []; // Đảm bảo luôn là array
+        console.error('Error loading branches:', error);
+        this.branches = [];
         this.isLoadingBranches = false;
       }
     );
   }
 
-  // Helper method to get branch value for select option
-  getBranchValue(branch: any): string {
-    if (!branch) return '';
-    
-    // Thử các property phổ biến cho value
-    return branch.id || 
-           branch.code || 
-           branch.foundation_id || 
-           branch.foundation_code ||
-           branch.name || 
-           branch.foundation_name ||
-           branch.title ||
-           JSON.stringify(branch); // fallback
-  }
-
-  // Helper method to get branch label for display
-  getBranchLabel(branch: any): string {
-    if (!branch) return '';
-    
-    // Thử các property phổ biến cho display name
-    return branch.name || 
-           branch.label || 
-           branch.title ||
-           branch.foundation_name ||
-           branch.display_name ||
-           branch.description ||
-           branch.id ||
-           branch.code ||
-           'Unnamed Branch';
-  }
-
-  // TrackBy function for better performance
-  trackBranch(index: number, branch: any): any {
-    return branch ? (branch.id || branch.code || index) : index;
-  }
-
-  // Method to refresh data
-  refresh() {
-    this.loadBranches();
-    this.loadViolationData();
-  }
-
-  // Method to export report
-  exportReport() {
-    // Implement export logic here
-  }
-
-  // Method to toggle view
-  toggleView() {
-    this.isTableView = !this.isTableView;
-  }
-
-  // Load violation data from API
   loadViolationData() {
     this.isLoadingChart = true;
-    // Thay thế 'your_token_here' bằng token thực tế từ authentication service
-    const token = localStorage.getItem('access_token') || '';
     
-    this.violationService.getViolationData(token, this.selectedBranch)
+    const token = localStorage.getItem('SVE_SESSION_ACCESS_TOKEN') || 
+                localStorage.getItem('accessToken') || 
+                localStorage.getItem('auth_token') ||
+                localStorage.getItem('access_token_sve') || 
+                localStorage.getItem('access_token') || 
+                localStorage.getItem('token') || 
+                '';
+    
+    const foundationId = this.getFoundationId();
+    
+    console.log('Token being used:', token);
+    console.log('Foundation ID:', foundationId);
+    
+    if (foundationId === '') {
+      console.log('🌍 Đang lấy dữ liệu tổng hợp của TẤT CẢ chi nhánh');
+    } else {
+      console.log('�� Đang lấy dữ liệu của chi nhánh cụ thể:', foundationId);
+    }
+
+    const startTimestamp = this.startDate.getTime();
+    const endTimestamp = this.endDate.getTime();
+    
+    console.log('Date range:', {
+      start: this.startDate,
+      end: this.endDate,
+      startTimestamp,
+      endTimestamp
+    });
+    
+    this.violationService.getViolationData(token, foundationId, startTimestamp, endTimestamp)
       .subscribe({
-        next: (response) => {
-          // Xử lý dữ liệu từ API và chuyển đổi thành định dạng chartData
-          this.processViolationData(response);
+        next: (response: any) => {
+          console.log('API Response:', response);
+          if (response && response.status === 0) {
+            console.error('API Error:', response.message);
+            this.isLoadingChart = false;
+            return;
+          }
+          
+          if (response && response.status === 1) {
+            this.processViolationData(response.data || []);
+            // Re-setup tooltip listeners after data changes
+            setTimeout(() => this.setupTooltipListeners(), 100);
+          } else {
+            this.chartData = [];
+          }
           this.isLoadingChart = false;
         },
         error: (error) => {
           console.error('Error loading violation data:', error);
           this.isLoadingChart = false;
-          // Fallback to sample data in case of error
-          this.generateChartData();
+          this.chartData = [];
         }
       });
   }
 
-  // Process API response data
-  private processViolationData(response: any) {
-    const today = new Date();
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() - (6 - i));
-      return date;
-    });
+  private processViolationData(apiData: any[]) {
+    console.log('Processing violation data:', apiData);
+    
+    const dates: Date[] = [];
+    let currentDate = new Date(this.startDate);
+    
+    while (currentDate <= this.endDate) {
+      dates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
 
-    // Chuyển đổi dữ liệu API thành định dạng chartData
-    this.chartData = last7Days.map(date => {
-      const dateStr = this.formatDateForAPI(date);
-      const violations = response[dateStr] || 0;
+    this.chartData = dates.map(date => {
+      const violationItem = apiData.find(item => {
+        const itemDate = new Date(item.timestamp);
+        return itemDate.toDateString() === date.toDateString();
+      });
+      
+      const violations = violationItem ? violationItem.totalNumberOfViolents : 0;
+      
       return {
         date: this.formatDate(date),
         value: violations
       };
     });
+    
+    console.log('Processed chart data:', this.chartData);
   }
 
-  // Format date for API request (YYYY-MM-DD)
-  private formatDateForAPI(date: Date): string {
-    return date.toISOString().split('T')[0];
-  }
-
-  // Generate sample data for the last 7 days
-  generateChartData(): void {
-    const today = new Date();
-    this.chartData = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() - (6 - i));
-      return {
-        date: this.formatDate(date),
-        value: Math.floor(Math.random() * 5)
-      };
-    });
-  }
-
-  // Format date as dd-MM-yyyy
   private formatDate(date: Date): string {
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -232,25 +228,273 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return `${dayOfWeek} (${day}-${month}-${year})`;
   }
 
-  // Get day of week in Vietnamese
   private getDayOfWeek(date: Date): string {
     const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
     return days[date.getDay()];
   }
 
-  // Generate SVG path for the chart line
+  // Chart methods
   getChartPath(): string {
-    return 'M ' + this.chartData.map((point, index) => 
-      `${(index * (100 / 6))} ${(5 - point.value) * 20}`
-    ).join(' L ');
+    if (!this.chartData.length) return '';
+    
+    const maxValue = this.getMaxValue();
+    console.log('Chart data for path:', this.chartData);
+    console.log('Max value:', maxValue);
+    
+    // Tạo points với tọa độ chính xác (dùng viewBox coordinates)
+    const points = this.chartData.map((point, index) => {
+      const x = (index / (this.chartData.length - 1)) * 100; // 0 đến 100
+      const y = 10 + ((maxValue - point.value) / maxValue) * 80; // 10 đến 90
+      return { x, y, value: point.value };
+    });
+    
+    console.log('Points for path:', points);
+    
+    if (points.length === 1) {
+      return `M ${points[0].x} ${points[0].y}`;
+    }
+    
+    // Tạo path đơn giản với đường thẳng
+    let path = `M ${points[0].x} ${points[0].y}`;
+    
+    for (let i = 1; i < points.length; i++) {
+      path += ` L ${points[i].x} ${points[i].y}`;
+    }
+    
+    console.log('Generated path:', path);
+    return path;
   }
 
-  // Get point coordinates for circles
   getPointX(index: number): string {
-    return `${(index * (100 / 6))}%`;
+    if (!this.chartData.length) return '0%';
+    if (this.chartData.length === 1) return '50%';
+    const x = (index / (this.chartData.length - 1)) * 100;
+    return `${x}%`;
   }
 
   getPointY(value: number): string {
-    return `${(5 - value) * 20}%`;
+    const maxValue = this.getMaxValue();
+    const y = 10 + ((maxValue - value) / maxValue) * 80; // 10% đến 90%
+    return `${y}%`;
+  }
+
+  getPointColor(value: number): string {
+    if (value === 0) return '#94a3b8';
+    if (value <= 2) return '#22c55e';
+    if (value <= 5) return '#f59e0b';
+    return '#ef4444';
+  }
+
+  getMaxValue(): number {
+    const dataMax = Math.max(...this.chartData.map(d => d.value));
+    return Math.max(dataMax, 5); // Tối thiểu là 5
+  }
+
+  getYAxisLabels(): number[] {
+    const maxValue = this.getMaxValue();
+    const step = Math.max(1, Math.ceil(maxValue / 5));
+    
+    // Tạo labels từ maxValue xuống 0
+    const labels: number[] = [];
+    for (let i = 0; i <= 5; i++) {
+      const value = maxValue - (i * step);
+      if (value >= 0) {
+        labels.push(value);
+      }
+    }
+    
+    // Đảm bảo luôn có label 0 ở cuối
+    if (labels[labels.length - 1] !== 0) {
+      labels.push(0);
+    }
+    
+    return labels;
+  }
+
+  // View methods
+  toggleView(): void {
+    this.isTableView = !this.isTableView;
+  }
+
+  refresh(): void {
+    console.log('🔄 Làm mới dashboard - Reset về trạng thái ban đầu');
+    
+    // Reset branch selection về "Tất cả chi nhánh"
+    this.selectedBranch = 'all';
+    
+    // Reset date range về default (hôm nay trừ 6 ngày đến hôm nay)
+    this.startDate = new Date();
+    this.endDate = new Date();
+    this.startDate.setDate(this.endDate.getDate() - 6);
+    this.startDate.setHours(0, 0, 0, 0);
+    this.endDate.setHours(23, 59, 59, 999);
+    
+    // Clear chart data
+    this.chartData = [];
+    
+    // Reset loading states
+    this.isLoadingBranches = false;
+    this.isLoadingChart = false;
+    
+    console.log('📅 Date range reset:', {
+      startDate: this.startDate,
+      endDate: this.endDate
+    });
+    console.log('🏢 Branch reset to:', this.selectedBranch);
+    
+    // Reload data
+    this.loadBranches();
+    this.loadViolationData();
+    
+    console.log('✅ Dashboard refresh completed');
+  }
+
+  exportReport(): void {
+    // Export functionality
+  }
+
+  // Download report with specific type
+  downloadReportFile(reportType: string): void {
+    console.log(`📥 Bắt đầu download báo cáo ${reportType.toUpperCase()}`);
+    
+    this.isDownloading = true;
+    
+    try {
+      // Get current parameters
+      const token = localStorage.getItem('SVE_SESSION_ACCESS_TOKEN') || 
+                  localStorage.getItem('accessToken') || 
+                  localStorage.getItem('auth_token') ||
+                  localStorage.getItem('access_token_sve') || 
+                  localStorage.getItem('access_token') || 
+                  localStorage.getItem('token') || 
+                  '';
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      const foundationId = this.getFoundationId();
+      const startTimestamp = this.startDate.getTime();
+      const endTimestamp = this.endDate.getTime();
+      
+      console.log('Download parameters:', {
+        reportType,
+        foundationId,
+        startDate: this.startDate,
+        endDate: this.endDate,
+        startTimestamp,
+        endTimestamp,
+        hasToken: !!token
+      });
+      
+      this.violationService.downloadReport(token, foundationId, startTimestamp, endTimestamp, reportType)
+        .subscribe({
+          next: (blob: Blob) => {
+            console.log('📁 Download response received:', blob);
+            console.log('📁 Blob details:', {
+              size: blob.size,
+              type: blob.type
+            });
+            
+            // Check if we actually got a blob
+            if (blob instanceof Blob) {
+              if (blob.size === 0) {
+                alert('❌ File rỗng từ server');
+                this.isDownloading = false;
+                return;
+              }
+              
+              // Check if it's actually HTML/JSON response (some servers return error as HTML)
+              if (blob.type.includes('text/html') || blob.type.includes('application/json')) {
+                console.log('⚠️ Server returned HTML/JSON instead of file');
+                alert('❌ Server trả về HTML/JSON thay vì file. Endpoint có thể không đúng.');
+                this.isDownloading = false;
+                return;
+              }
+              
+              console.log('✅ Valid file blob received, processing download...');
+              this.processDownload(blob, reportType);
+            } else {
+              console.error('❌ Response is not a Blob:', blob);
+              alert('❌ Response không phải file blob');
+              this.isDownloading = false;
+            }
+          },
+          error: (error) => {
+            console.error('❌ Download error:', error);
+            console.error('❌ Error type:', typeof error);
+            console.error('❌ Error details:', error.error || {});
+            
+            this.isDownloading = false;
+            
+            let errorMessage = 'Lỗi không xác định';
+            if (error?.message) {
+              errorMessage = error.message;
+            } else if (error?.error?.message) {
+              errorMessage = error.error.message;
+            } else if (error?.status) {
+              errorMessage = `HTTP ${error.status}: ${error.statusText || 'Server error'}`;
+            }
+            
+            alert(`Lỗi khi tải báo cáo: ${errorMessage}`);
+          }
+        });
+    } catch (error) {
+      console.error('❌ Setup error:', error);
+      this.isDownloading = false;
+      alert(`Lỗi setup: ${error}`);
+    }
+  }
+  
+  private processDownload(blob: Blob, reportType: string): void {
+    try {
+      console.log('📁 Processing download:', {
+        type: blob.type,
+        size: blob.size
+      });
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('File rỗng hoặc không hợp lệ');
+      }
+      
+      // Create download link
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      
+      // Generate filename
+      const dateStr = new Date().toISOString().split('T')[0];
+      const branchName = this.selectedBranch === 'all' ? 'TatCa' : 'ChiNhanh';
+      const filename = `BaoCaoViPham_${branchName}_${dateStr}.${reportType === 'excel' ? 'xlsx' : 'pdf'}`;
+      
+      link.download = filename;
+      link.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(downloadUrl);
+      link.remove();
+      
+      console.log(`✅ Download completed: ${filename}`);
+      this.isDownloading = false;
+    } catch (error) {
+      console.error('❌ Process download error:', error);
+      this.isDownloading = false;
+      alert(`Lỗi xử lý file: ${error}`);
+    }
+  }
+
+
+
+  // Track by function for ngFor
+  trackBranch(index: number, branch: any): any {
+    return branch?.id || branch?.foundation_id || index;
+  }
+
+  getBranchValue(branch: any): string {
+    return branch?.id || branch?.foundation_id || '';
+  }
+
+  getBranchLabel(branch: any): string {
+    return branch?.name || branch?.foundation_name || 'Unknown Branch';
   }
 } 

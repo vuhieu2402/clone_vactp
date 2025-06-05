@@ -16,7 +16,11 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <!-- Branch Selection -->
         <div>
-          <nz-select class="w-full" [(ngModel)]="selectedBranch" nzPlaceHolder="Chi nhánh" [nzLoading]="isLoadingBranches">
+          <nz-select class="w-full" 
+                     [(ngModel)]="selectedBranch" 
+                     (ngModelChange)="onBranchChange()"
+                     nzPlaceHolder="Chi nhánh" 
+                     [nzLoading]="isLoadingBranches">
             <nz-option nzValue="all" nzLabel="Tất cả chi nhánh"></nz-option>
             <nz-option *ngFor="let branch of branches; trackBy: trackBranch" 
                        [nzValue]="getBranchValue(branch)" 
@@ -30,6 +34,7 @@
           <nz-date-picker 
             class="w-full" 
             [(ngModel)]="startDate"
+            (ngModelChange)="onDateChange()"
             nzPlaceHolder="Ngày bắt đầu"
             [nzSuffixIcon]="calendarIcon">
           </nz-date-picker>
@@ -43,6 +48,7 @@
           <nz-date-picker 
             class="w-full" 
             [(ngModel)]="endDate"
+            (ngModelChange)="onDateChange()"
             nzPlaceHolder="Ngày kết thúc"
             [nzSuffixIcon]="calendarIcon">
           </nz-date-picker>
@@ -52,38 +58,43 @@
       <!-- Action Buttons -->
       <div class="flex items-center gap-4 mb-6">
         <!-- Refresh Button -->
-        <button (click)="refresh()" class="flex items-center px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50">
-          <i nz-icon nzType="sync" class="mr-2"></i>
-          Làm mới
+        <button (click)="refresh()" 
+                [disabled]="isLoadingBranches || isLoadingChart"
+                class="flex items-center px-4 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+          <i nz-icon nzType="sync" class="mr-2" [nzSpin]="isLoadingBranches || isLoadingChart"></i>
+          <span *ngIf="!isLoadingBranches && !isLoadingChart">Làm mới</span>
+          <span *ngIf="isLoadingBranches || isLoadingChart">Đang làm mới...</span>
         </button>
 
         <!-- Export Button -->
         <div class="relative">
-          <button nz-button nz-dropdown [nzDropdownMenu]="menu" class="bg-yellow-500 text-white px-4 py-2 rounded flex items-center">
-            <i nz-icon nzType="download" class="mr-2"></i>
-            Xuất báo cáo
-            <i nz-icon nzType="down" class="ml-2"></i>
+          <button nz-button nz-dropdown [nzDropdownMenu]="menu" 
+                  [disabled]="isDownloading"
+                  class="bg-yellow-500 text-white px-4 py-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+            <i nz-icon [nzType]="isDownloading ? 'loading' : 'download'" 
+               class="mr-2" 
+               [nzSpin]="isDownloading"></i>
+            <span *ngIf="!isDownloading">Xuất báo cáo</span>
+            <span *ngIf="isDownloading">Đang tải...</span>
+            <i nz-icon nzType="down" class="ml-2" *ngIf="!isDownloading"></i>
           </button>
           <nz-dropdown-menu #menu="nzDropdownMenu">
             <ul nz-menu>
-              <li nz-menu-item>Excel</li>
-              <li nz-menu-item>PDF</li>
+              <li nz-menu-item (click)="downloadReportFile('excel')">
+                <i nz-icon nzType="file-excel" class="mr-2 text-green-600"></i>
+                Excel (.xlsx)
+              </li>
+              <li nz-menu-item (click)="downloadReportFile('pdf')">
+                <i nz-icon nzType="file-pdf" class="mr-2 text-red-600"></i>
+                PDF (.pdf)
+              </li>
             </ul>
           </nz-dropdown-menu>
         </div>
-
-        <!-- Table View Toggle -->
-        <button (click)="toggleView()" class="flex items-center px-4 py-2 rounded transition-colors duration-200"
-                [class.bg-pink-500]="isTableView"
-                [class.bg-gray-500]="!isTableView"
-                [class.text-white]="true">
-          <i nz-icon [nzType]="isTableView ? 'pie-chart' : 'table'" class="mr-2"></i>
-          {{isTableView ? 'Dashboard View' : 'Table View'}}
-        </button>
       </div>
 
       <!-- Dashboard View (Chart Section) -->
-      <div *ngIf="!isTableView" class="bg-white rounded-lg p-6">
+      <div class="bg-white rounded-lg p-6">
         <h2 class="text-lg font-medium mb-6">
           Biểu đồ tổng hợp trạng thái đóng/mở kho : {{endDate | date:'dd-MM-yyyy'}}
         </h2>
@@ -117,94 +128,125 @@
         <!-- Line Chart Section -->
         <div class="mt-8 bg-white rounded-lg p-6">
           <h2 class="text-lg font-medium mb-6">
-            Biểu đồ tổng hợp số lượt vi phạm cập nhật: {{endDate | date:'dd-MM-yyyy'}}
+            Biểu đồ tổng hợp số lượt vi phạm từ {{startDate | date:'dd/MM/yyyy'}} đến {{endDate | date:'dd/MM/yyyy'}}
           </h2>
           
           <!-- Loading State -->
-          <div *ngIf="isLoadingChart" class="flex justify-center items-center h-[300px]">
+          <div *ngIf="isLoadingChart" class="flex justify-center items-center h-[400px]">
             <nz-spin nzTip="Đang tải dữ liệu..."></nz-spin>
           </div>
 
           <!-- Chart Container -->
-          <div *ngIf="!isLoadingChart" class="relative h-[300px] w-full">
+          <div *ngIf="!isLoadingChart" class="relative h-[400px] w-full bg-gray-50 rounded-lg p-4">
             <!-- Y-axis labels -->
-            <div class="absolute left-0 top-0 h-full flex flex-col justify-between text-sm text-gray-600 py-4">
-              <span>5</span>
-              <span>4</span>
-              <span>3</span>
-              <span>2</span>
-              <span>1</span>
-              <span>0</span>
+            <div class="absolute left-0 top-0 h-full flex flex-col justify-between text-sm text-gray-600 py-4 pr-2">
+              <span *ngFor="let label of getYAxisLabels()" class="text-right">{{label}}</span>
             </div>
             
             <!-- Chart Area -->
-            <div class="ml-8 h-full relative">
+            <div class="ml-12 h-full relative bg-white rounded border">
               <!-- Grid lines -->
-              <div class="absolute inset-0 flex flex-col justify-between">
-                <div *ngFor="let _ of [0,1,2,3,4,5]" class="border-b border-gray-200 h-[16.666%]"></div>
+              <div class="absolute inset-0">
+                <!-- Horizontal grid lines -->
+                <div *ngFor="let _ of getYAxisLabels()" 
+                     class="border-b border-gray-200 h-[16.666%] first:border-t-0"></div>
+                
+                <!-- Vertical grid lines -->
+                <div class="absolute inset-0 flex">
+                  <div *ngFor="let point of chartData; let i = index" 
+                       class="border-r border-gray-100 flex-1 first:border-l-0"
+                       [style.width.%]="100/chartData.length"></div>
+                </div>
               </div>
               
-              <!-- Data points and line -->
-              <div class="absolute inset-0">
-                <svg class="w-full h-full">
-                  <!-- Line connecting points -->
-                  <path [attr.d]="getChartPath()"
-                    class="stroke-blue-500 stroke-2 fill-none"/>
+              <!-- Data visualization -->
+              <div class="absolute inset-0 p-2">
+                <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <!-- Gradient definition for line -->
+                  <defs>
+                    <!-- Shadow filter -->
+                    <filter id="shadow">
+                      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.1"/>
+                    </filter>
+                  </defs>
                   
-                  <!-- Data points -->
+                  <!-- Main line - đường nối màu xanh -->
+                  <path [attr.d]="getChartPath()"
+                        stroke="#3b82f6"
+                        stroke-width="0.5"
+                        fill="none"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        vector-effect="non-scaling-stroke"></path>
+                  
+                  <!-- Data points with tooltips -->
                   <g *ngFor="let point of chartData; let i = index">
-                    <circle [attr.cx]="getPointX(i)"
-                            [attr.cy]="getPointY(point.value)"
-                            r="4"
-                            class="fill-blue-500"/>
+                    <!-- Hover area (invisible larger circle for easier hovering) -->
+                    <circle [attr.cx]="(i / (chartData.length - 1)) * 100"
+                            [attr.cy]="10 + ((getMaxValue() - point.value) / getMaxValue()) * 80"
+                            r="3"
+                            fill="transparent"
+                            class="cursor-pointer"
+                            [attr.data-tooltip]="point.value + ' vi phạm - ' + point.date"/>
+                    
+                    <!-- Outer circle (glow effect) -->
+                    <circle [attr.cx]="(i / (chartData.length - 1)) * 100"
+                            [attr.cy]="10 + ((getMaxValue() - point.value) / getMaxValue()) * 80"
+                            r="2"
+                            [attr.fill]="getPointColor(point.value)"
+                            opacity="0.4"
+                            class="transition-all duration-200 hover:opacity-70"/>
+                    
+                    <!-- Inner circle -->
+                    <circle [attr.cx]="(i / (chartData.length - 1)) * 100"
+                            [attr.cy]="10 + ((getMaxValue() - point.value) / getMaxValue()) * 80"
+                            r="1"
+                            [attr.fill]="getPointColor(point.value)"
+                            stroke="white"
+                            stroke-width="0.2"
+                            filter="url(#shadow)"
+                            class="transition-all duration-200 hover:r-1.5"/>
                   </g>
                 </svg>
+                
+                <!-- Tooltip -->
+                <div id="chart-tooltip" 
+                     class="absolute bg-gray-800 text-white px-3 py-2 rounded-lg text-sm pointer-events-none opacity-0 transition-opacity duration-200 z-10"
+                     style="transform: translate(-50%, -100%);">
+                </div>
               </div>
               
               <!-- X-axis labels -->
-              <div class="absolute bottom-[-2.5rem] left-0 right-0 flex justify-between text-sm text-gray-600">
-                <div *ngFor="let point of chartData" class="transform -rotate-45 origin-top-left">
+              <div class="absolute bottom-[-3rem] left-0 right-0 flex justify-between text-xs text-gray-600 px-2">
+                <div *ngFor="let point of chartData; let i = index" 
+                     class="transform -rotate-45 origin-bottom-left max-w-[80px] truncate"
+                     [style.width.%]="100/chartData.length">
                   {{point.date}}
                 </div>
               </div>
             </div>
+            
+            <!-- Legend -->
+            <div class="absolute bottom-[-5rem] left-12 right-0 flex flex-wrap gap-4 text-xs">
+              <div class="flex items-center">
+                <div class="w-3 h-3 bg-gray-400 rounded-full mr-2"></div>
+                <span>Không vi phạm (0)</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                <span>Thấp (1-2)</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                <span>Trung bình (3-5)</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                <span>Cao (>5)</span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-
-      <!-- Table View -->
-      <div *ngIf="isTableView" class="bg-white rounded-lg p-6">
-        <h2 class="text-lg font-medium mb-6">
-          Bảng tổng hợp trạng thái đóng/mở kho : {{endDate | date:'dd-MM-yyyy'}}
-        </h2>
-        
-        <!-- Table Container -->
-        <nz-table #basicTable [nzData]="tableData" [nzPageSize]="10">
-          <thead>
-            <tr>
-              <th>STT</th>
-              <th>Tên kho</th>
-              <th>Trạng thái</th>
-              <th>Thời gian</th>
-              <th>Người thực hiện</th>
-              <th>Ghi chú</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *nzFor="let data of basicTable.data; index as i">
-              <td>{{ i + 1 }}</td>
-              <td>{{ data.tenKho }}</td>
-              <td>
-                <nz-tag [nzColor]="data.trangThai === 'Mở' ? 'green' : 'orange'">
-                  {{ data.trangThai }}
-                </nz-tag>
-              </td>
-              <td>{{ data.thoiGian | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td>{{ data.nguoiThucHien }}</td>
-              <td>{{ data.ghiChu }}</td>
-            </tr>
-          </tbody>
-        </nz-table>
       </div>
     </div>
   </div>
