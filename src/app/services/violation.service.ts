@@ -25,9 +25,7 @@ export class ViolationService {
       end_time: endTime
     };
 
-    console.log('API Request body:', body);
-    console.log('Start time (readable):', startTime ? new Date(startTime) : 'undefined');
-    console.log('End time (readable):', endTime ? new Date(endTime) : 'undefined');
+    
 
     return this.http.post(this.baseUrl, body, { 
       headers: headers,
