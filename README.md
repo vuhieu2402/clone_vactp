@@ -4,10 +4,10 @@
 
 ## Công nghệ sử dụng
 
-- **Angular 16**: Framework frontend chính
-- **Tailwind CSS**: Utility-first CSS framework
+- **Angular 
+- **Tailwind 
 - **ng-zorro-antd**: Ant Design components cho Angular
-- **TypeScript**: Ngôn ngữ lập trình chính
+
 
 
 
